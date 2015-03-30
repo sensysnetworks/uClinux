@@ -2,7 +2,7 @@
  *            the pppd from the command line.
  *            C. Scott Ananian <cananian@alumni.princeton.edu>
  *
- * $Id: pptp.c,v 1.16 2003/05/26 04:28:48 davidm Exp $
+ * $Id: pptp.c,v 1.1 2004/12/23 07:19:28 hui Exp $
  */
 
 #include <sys/types.h>
@@ -93,6 +93,7 @@ int main(int argc, char **argv, char **envp) {
   int gre_fd = -1;
   static volatile pid_t child_pid;
   u_int16_t call_id, peer_call_id;
+  int count = 0;
   
 #ifdef EMBED
   openlog(argv[0],LOG_PID,LOG_USER);
@@ -102,11 +103,17 @@ int main(int argc, char **argv, char **envp) {
     usage(argv[0]);
 
   /* Step 1: Get IP address for the hostname in argv[1] */
-  for (;;) {
+  for (count = 0; count < 3; count++ ) {
     inetaddr = get_ip_address(argv[1]);
     if(inetaddr.s_addr != 0)
       break;
     sleep(RESPAWN_DELAY);
+  }
+
+  if (inetaddr.s_addr == 0) {
+	pptp_error("inetaddr: %s\n", strerror(errno));
+    sleep(RESPAWN_DELAY);
+	exit(1);
   }
 
   /*
@@ -379,15 +386,14 @@ int get_call_id(int sock, pid_t gre,
 }
 
 void launch_pppd(char *ttydev, int argc, char **argv) {
-  char *new_argv[argc+4]; /* XXX if not using GCC, hard code a limit here. */
+  char *new_argv[argc+3]; /* XXX if not using GCC, hard code a limit here. */
   int i;
 
   new_argv[0] = PPPD_BINARY;
   new_argv[1] = ttydev;
-  new_argv[2] = "38400";
   for (i=0; i<argc; i++)
-    new_argv[i+3] = argv[i];
-  new_argv[i+3] = NULL;
+    new_argv[i+2] = argv[i];
+  new_argv[i+2] = NULL;
   execvp(new_argv[0], new_argv);
 }
 

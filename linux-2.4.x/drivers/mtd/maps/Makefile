@@ -75,6 +75,8 @@ obj-$(CONFIG_MTD_NETteluC)	+= nettel-uc.o
 obj-$(CONFIG_MTD_SCB2_FLASH)	+= scb2_flash.o
 obj-$(CONFIG_MTD_MBVANILLA)	+= mbvanilla-flash.o
 obj-$(CONFIG_MTD_BLACKFIN_533)	+= bf533-flash.o
+obj-$(CONFIG_MTD_UC5272)	+= uc5272.o
+obj-$(CONFIG_MTD_MOD5272)	+= mod5272.o
 
 include $(TOPDIR)/Rules.make
 

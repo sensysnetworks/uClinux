@@ -213,7 +213,11 @@ Tcl_Fork()
      */
 
     waitPtr = &waitTable[waitTableUsed];
+#ifndef EMBED
     pid = fork();
+#else
+    pid = vfork();
+#endif
     if (pid > 0) {
 	waitPtr->pid = pid;
 	waitPtr->flags = 0;

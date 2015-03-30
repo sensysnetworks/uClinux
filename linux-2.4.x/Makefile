@@ -1,7 +1,7 @@
 VERSION = 2
 PATCHLEVEL = 4
 SUBLEVEL = 24
-EXTRAVERSION = -uc0
+EXTRAVERSION = -uc0-rthal2
 
 KERNELRELEASE=$(VERSION).$(PATCHLEVEL).$(SUBLEVEL)$(EXTRAVERSION)
 
@@ -22,9 +22,8 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ -e s/arm.*
 endif
 
 ifndef ARCH
-ARCH := $(SUBARCH)
+ARCH := m68knommu
 endif
-
 
 KERNELPATH=kernel-$(shell echo $(KERNELRELEASE) | sed -e "s/-//g")
 
@@ -45,7 +44,7 @@ HOSTCFLAGS	= -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer
 # CROSS_COMPILE 	= nios-elf-
 # CROSS_COMPILE		= e1-coff-
 ifndef CROSS_COMPILE
-CROSS_COMPILE 	=
+CROSS_COMPILE 	= m68k-elf-
 endif
 
 #

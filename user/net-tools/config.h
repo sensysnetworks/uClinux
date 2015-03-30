@@ -46,8 +46,8 @@
  */
 #define HAVE_HWETHER 1
 #define HAVE_HWARC 0
-#define HAVE_HWSLIP 0
-#define HAVE_HWPPP 1
+#define HAVE_HWSLIP 1
+#define HAVE_HWPPP 0
 #define HAVE_HWTUNNEL 0
 #define HAVE_HWSTRIP 0
 #define HAVE_HWTR 0

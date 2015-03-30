@@ -27,10 +27,29 @@
 #include <asm/page.h>
 #include <asm/machdep.h>
 
+/* ----- irq node reservation ------ */
+
+#define NUM_IRQ_NODES (32)
+static irq_node_t nodes[NUM_IRQ_NODES];
+
+irq_node_t* new_irq_node(void) {
+  int i;
+  for(i=0;i<NUM_IRQ_NODES;i++) {
+    if(nodes[i].handler==0) return &nodes[i];
+  };
+  return 0;
+};
+
+void delete_irq_node(irq_node_t* node) {
+  node->handler=0;
+};
+
+/* ----- eof irq node reservation ----- */
+
 /*
  *	This table stores the address info for each vector handler.
  */
-irq_handler_t irq_list[SYS_IRQS];
+irq_node_t *int_irq_list[SYS_IRQS];
 
 unsigned int *mach_kstat_irqs;
 
@@ -84,9 +103,9 @@ asm (
 
 void init_IRQ(void)
 {
+	/*
 	int i;
 	
-
 	for (i = 0; i < SYS_IRQS; i++) {
 		if (mach_default_handler)
 			irq_list[i].handler = (*mach_default_handler)[i];
@@ -96,6 +115,7 @@ void init_IRQ(void)
 		irq_list[i].dev_id  = NULL;
 		irq_list[i].devname = NULL;
 	}
+	*/
 
 	if (mach_init_IRQ)
 		mach_init_IRQ ();
@@ -105,6 +125,8 @@ void init_IRQ(void)
 int request_irq(unsigned int irq, void (*handler)(int, void *, struct pt_regs *),
                 unsigned long flags, const char *devname, void *dev_id)
 {
+	irq_node_t *newirq;
+
 #if DAVIDM
 	if ((irq & IRQ_MACHSPEC) && mach_request_irq) {
 		return mach_request_irq(IRQ_IDX(irq), handler, flags,
@@ -118,18 +140,31 @@ int request_irq(unsigned int irq, void (*handler)(int, void *, struct pt_regs *)
 		return -ENXIO;
 	}
 
-	if (!(irq_list[irq].flags & IRQ_FLG_STD)) {
-		if (irq_list[irq].flags & IRQ_FLG_LOCK) {
-			printk("%s: IRQ %d from %s is not replaceable\n",
-			       __FUNCTION__, irq, irq_list[irq].devname);
-			return -EBUSY;
-		}
-		if (flags & IRQ_FLG_REPLACE) {
-			printk("%s: %s can't replace IRQ %d from %s\n",
-			       __FUNCTION__, devname, irq, irq_list[irq].devname);
-			return -EBUSY;
-		}
-	}
+  /*
+   * Sanity-check: shared interrupts should REALLY pass in
+   * a real dev-ID, otherwise we'll have trouble later trying
+   * to figure out which interrupt is which (messes up the
+   * interrupt freeing logic etc).
+   */
+  if (flags & SA_SHIRQ) {
+    if (!dev_id)
+      printk("Bad boy: %s called us without a dev_id!\n", devname);
+  }
+  
+  if(int_irq_list[irq]) {
+    if(!(int_irq_list[irq]->flags & flags & SA_SHIRQ)) {
+      return -EBUSY;
+    }
+    else {
+      irq_node_t *lastirq = int_irq_list[irq];
+      newirq = new_irq_node();
+      while(lastirq->next) lastirq = lastirq->next;
+      lastirq->next = newirq;
+    };
+  }
+  else {
+    int_irq_list[irq] = newirq = new_irq_node();
+  };
 
 	if (flags & IRQ_FLG_FAST) {
 		extern asmlinkage void fasthandler(void);
@@ -137,15 +172,18 @@ int request_irq(unsigned int irq, void (*handler)(int, void *, struct pt_regs *)
 		set_evector(irq, fasthandler);
 	}
 
-	irq_list[irq].handler = handler;
-	irq_list[irq].flags   = flags;
-	irq_list[irq].dev_id  = dev_id;
-	irq_list[irq].devname = devname;
+	newirq->handler = handler;
+	newirq->flags   = flags;
+	newirq->dev_id  = dev_id;
+	newirq->devname = devname;
+	newirq->next    = 0;
 	return 0;
 }
 
 void free_irq(unsigned int irq, void *dev_id)
 {
+	irq_node_t *nextirq,*previrq;
+
 #if DAVIDM
 	if (irq & IRQ_MACHSPEC) {
 		mach_free_irq(IRQ_IDX(irq), dev_id);
@@ -158,26 +196,27 @@ void free_irq(unsigned int irq, void *dev_id)
 		return;
 	}
 
-	if (irq_list[irq].dev_id != dev_id)
-		printk("%s: Removing probably wrong IRQ %d from %s\n",
-		       __FUNCTION__, irq, irq_list[irq].devname);
+  nextirq = int_irq_list[irq];
+  previrq = 0;
+  if(!nextirq) return;
+  while(nextirq) {
+    if(nextirq->dev_id == dev_id) {
+      if(previrq) previrq->next=nextirq->next;
+      else int_irq_list[irq]=nextirq->next;
+      nextirq->handler = 0;
+      nextirq->flags   = IRQ_FLG_STD;
+      nextirq->dev_id  = NULL;
+      nextirq->devname = NULL;
+    }
+    else {
+      previrq = nextirq;
+    };
+    nextirq = nextirq->next;
+  };
 
-	if (irq_list[irq].flags & IRQ_FLG_FAST) {
-		extern asmlinkage void inthandler(void);
-		extern void set_evector(int vecnum, void (*handler)(void));
-		set_evector(irq, inthandler);
-	}
-
-	if (mach_default_handler)
-		irq_list[irq].handler = (*mach_default_handler)[irq];
-	else
-		irq_list[irq].handler = default_irq_handler;
-	irq_list[irq].flags   = IRQ_FLG_STD;
-	irq_list[irq].dev_id  = NULL;
-	irq_list[irq].devname = NULL;
 }
 
-
+#if 0 // these are not used anyways ...
 int sys_request_irq(unsigned int irq, 
                     void (*handler)(int, void *, struct pt_regs *), 
                     unsigned long flags, const char *devname, void *dev_id)
@@ -188,7 +227,6 @@ int sys_request_irq(unsigned int irq,
 		return -ENXIO;
 	}
 
-#if 0
 	if (!(irq_list[irq].flags & IRQ_FLG_STD)) {
 		if (irq_list[irq].flags & IRQ_FLG_LOCK) {
 			printk("%s: IRQ %d from %s is not replaceable\n",
@@ -201,12 +239,11 @@ int sys_request_irq(unsigned int irq,
 			return -EBUSY;
 		}
 	}
-#endif
 
-	irq_list[irq].handler = handler;
-	irq_list[irq].flags   = flags;
-	irq_list[irq].dev_id  = dev_id;
-	irq_list[irq].devname = devname;
+	irq_list[irq]->handler = handler;
+	irq_list[irq]->flags   = flags;
+	irq_list[irq]->dev_id  = dev_id;
+	irq_list[irq]->devname = devname;
 	return 0;
 }
 
@@ -226,6 +263,7 @@ void sys_free_irq(unsigned int irq, void *dev_id)
 	irq_list[irq].dev_id  = NULL;
 	// irq_list[irq].devname = default_names[irq];
 }
+#endif
 
 /*
  * Do we need these probe functions on the m68k?
@@ -244,40 +282,42 @@ int probe_irq_off (unsigned long irqs)
 
 asmlinkage void process_int(unsigned long vec, struct pt_regs *fp)
 {
-	if (vec >= VEC_INT1 && vec <= VEC_INT7) {
-		vec -= VEC_SPUR;
-		kstat.irqs[0][vec]++;
-		irq_list[vec].handler(vec, irq_list[vec].dev_id, fp);
-	} else {
-		if (mach_process_int)
-			mach_process_int(vec, fp);
-		else
-			panic("Can't process interrupt vector %ld\n", vec);
-		return;
-	}
-}
+  irq_node_t *irqnode = int_irq_list[vec];
+  while(irqnode) {
+    irqnode->handler(vec, irqnode->dev_id, fp);
+    irqnode = irqnode->next;
+  };
+};
 
 
 int get_irq_list(char *buf)
 {
 	int i, len = 0;
+        irq_node_t *node;
 
-	for (i = 0; i < NR_IRQS; i++) {
-		if (irq_list[i].flags & IRQ_FLG_STD)
-			continue;
+        len += sprintf(buf+len, "Internal 68VZ328 interrupts\n");
 
-		len += sprintf(buf+len, "%3d: %10u ", i,
-		               i ? kstat.irqs[0][i] : num_spurious);
-		if (irq_list[i].flags & IRQ_FLG_LOCK)
-			len += sprintf(buf+len, "L ");
-		else
-			len += sprintf(buf+len, "  ");
-		len += sprintf(buf+len, "%s\n", irq_list[i].devname);
-	}
-
-	if (mach_get_irq_list)
-		len += mach_get_irq_list(buf+len);
-	return len;
+        for (i = 0; i < NR_IRQS; i++) {
+                int start=1,any=0;
+                irq_node_t *nextirq = int_irq_list[i];
+                while(nextirq) {
+                  if(nextirq->handler) {
+                    if(start) {
+                      start=0;
+                      len += sprintf(buf+len, " %2d: %10u    %s", i,
+                                     i ? kstat.irqs[0][i] : num_spurious,
+				     nextirq->devname);
+                    }
+                    else {
+                      len += sprintf(buf+len, ", %s", nextirq->devname);
+                    };
+                    any=1;
+                  };
+                  nextirq = nextirq->next;
+                };
+                if(any) len += sprintf(buf+len, "\n");
+        }
+        return len;
 }
 
 void init_irq_proc(void);
@@ -286,3 +326,79 @@ void init_irq_proc(void)
 	/* Insert /proc/irq driver here */
 }
 
+
+/* --------------------------- rtai stuff -------------------------- */
+
+#define soft_cli()  __asm__ __volatile__ ( \
+                        "move %0,%/sr\n" \
+                        : /* no output */ \
+                        : "i" (LINUX_IRQS_DISABLE) \
+                        : "cc", "memory")
+
+#define soft_sti()  __asm__ __volatile__ ( \
+                        "move #0x2000,%/sr\n" \
+                        : /* no output */ \
+                        : /* no input */ \
+                        : "cc", "memory")
+
+static void linux_sti(void) {
+  soft_sti();
+};
+
+static void linux_cli(void) {
+  soft_cli();
+};
+
+static unsigned int linux_save_flags(void) {
+  int x;
+  hard_save_flags(x);
+  return x;
+}
+
+static void linux_restore_flags(unsigned int x) {
+  hard_restore_flags(x);
+};
+
+static unsigned int linux_save_flags_and_cli(void) {
+  int x;
+  hard_save_flags(x);
+  soft_cli();
+  return x;
+};
+
+struct rt_hal rthal = {
+  0, // &ret_from_intr,
+  0, // __switch_to,
+  0, // idt_table,
+  linux_cli,
+  linux_sti,
+  linux_save_flags,
+  linux_restore_flags,
+  linux_save_flags_and_cli,
+  0, // irq_desc,
+  0, // irq_vector,
+  0, // irq_affinity,
+  0, // smp_invalidate_interrupt,
+  0, // ack_8259_irq,
+  0, // &idle_weight,
+  0,
+  0, // switch_mem,
+  0, // init_tasks
+};
+
+#include <asm/coldfire.h>
+#include <asm/mcftimer.h>
+
+long long rt_time_rdtsc = 0;
+
+long long rdtsc(void) {
+  volatile unsigned short *timerp;
+  long flags;
+  unsigned short diff;
+  hard_save_flags_and_cli(flags);
+  timerp = (volatile unsigned short *) (MCF_MBAR + MCFTIMER_BASE4);
+  diff = timerp[MCFTIMER_TCN] - rt_time_rdtsc;
+  rt_time_rdtsc += diff;
+  hard_restore_flags(flags);
+  return rt_time_rdtsc;
+};

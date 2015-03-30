@@ -32,6 +32,9 @@
 #endif
 #include <dirent.h>
 
+#include <asm/coldfire.h>
+#include <asm/m5272sim.h>
+
 /*****************************************************************************/
 
 char *version = "1.3.4";
@@ -98,6 +101,22 @@ int sanity_check(int fd)
 	}
 	closedir(dp);
 	return (count > 1);
+}
+
+static void
+fastboot( void )
+{
+    volatile unsigned short * wrrr =
+	(unsigned short *)(MCF_MBAR + MCFSIM_WRRR);
+
+    *wrrr = 0;
+    *wrrr = 1;
+
+    for (;;) {
+	continue;
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -398,6 +417,11 @@ int main(int argc, char *argv[])
 	if (file)
 		close(fdcp);
 	close(fd);
+
+
+	fastboot();
+
+
 	exit(0);
 }
 

@@ -64,7 +64,7 @@
 #endif /* !FD_SET */
 
 
-static char* argv0;
+char* argv0;
 
 typedef struct {
     char* pattern;
@@ -162,6 +162,9 @@ main( int argc, char** argv )
     char* throttlefile;
     char* hostname;
     char* logfile;
+#ifdef EMBED
+    char* interposer = (char *) 0;
+#endif
     char* user;
     char cwd[MAXPATHLEN];
     FILE* logfp;
@@ -255,12 +258,35 @@ main( int argc, char** argv )
 	    ++argn;
 	    logfile = argv[argn];
 	    }
+#ifdef EMBED
+	else if ( strcmp( argv[argn], "-interposer" ) == 0 && argn + 1 < argc )
+	    {
+	    ++argn;
+	    interposer = argv[argn];
+	    }
+#endif
 	else
 	    usage();
 	++argn;
 	}
     if ( argn != argc )
 	usage();
+
+#ifdef EMBED
+    if ( interposer ) 
+	{
+	char buf[512];
+	int r, c;
+
+	c = atoi(interposer);
+	while(c > 0 && (r=read(0, buf, sizeof(buf))) > 0) 
+		{
+		write(1, buf, r<c?r:c);
+		c -= r;
+		}
+	return 0;
+	}
+#endif
 
     /* Lookup hostname now in case we're going to chroot(). */
     if ( hostname == (char*) 0 )
@@ -385,10 +411,10 @@ main( int argc, char** argv )
 
     if ( ! debug )
 	{
+#ifndef EMBED
 	/* We're not going to use stdin stdout or stderr from here on, so close
 	** them to save file descriptors.
 	*/
-#ifndef EMBED
 	(void) fclose( stdin );
 	(void) fclose( stdout );
 	(void) fclose( stderr );

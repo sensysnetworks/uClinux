@@ -418,4 +418,7 @@ void arch_gettod(int *year, int *mon, int *day, int *hour,
 		mach_gettod(year, mon, day, hour, min, sec);
 }
 
-
+// this is not the right place for abs()!
+int abs(int x) {
+  return (x<0)?-x:x;
+};

@@ -3,7 +3,7 @@ INCLUDE arch/m68knommu/platform/5272/uC5272/romfs.ld
 
 MEMORY {
 	bvec   : ORIGIN = 0x00020000, LENGTH = 0x00000400
-	ram    : ORIGIN = 0x00020400, LENGTH = 0x007e0000
+	ram    : ORIGIN = 0x00020400, LENGTH = 0x00fe0000
 	flash  : ORIGIN = 0x10c00000, LENGTH = 0x00400000
 	eram   : ORIGIN = 0x00800000, LENGTH = 0     
 }

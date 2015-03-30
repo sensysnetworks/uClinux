@@ -11,6 +11,7 @@ more than is defined by POSIX, unfortunately.  Systems that do not have the
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/timex.h>
 #include <stdlib.h>
 #include <config/autoconf.h>
 
@@ -54,7 +55,7 @@ time_t convert_time (double value, int *millisecs) {
     return result;
 }
 
-
+#define	abs(x)	(((x) > 0) ? x : (-(x)))
 
 void adjust_time (double difference, int immediate, double ignore) {
 
@@ -122,4 +123,74 @@ negative, unsigned values. */
         system("rtc -w");
 #endif
     }
+
+    /*
+     * added to adjust unix clock offset. this function is called everytime
+     * msntp needs to adjust the clock. we save the new time as "last" and 
+     * use the difference as the time interval. The differences is divided
+     * by the time interval to get frequency difference (in usec) per second.
+     * to convert to the freq of adjtimex, we multiply that ty 65536 (1<<16)
+     * and use adjtimex to set the frequency.
+     *
+     * note that the first time this function is called, last is 0 and thus
+     * no adjustment is made. also, if the period is small and the change is 
+     * small, we dont do any adjustment.
+     */
+	{
+		static struct timeval last = { 0, 0 };
+
+		long            period = 0;
+		long            change = 0;
+		long          	freq = 0;
+		struct timeval  oldlast = last;
+
+		if (last.tv_sec != 0) {
+			period = old.tv_sec - last.tv_sec;
+			change = (new.tv_sec - old.tv_sec) * 1000000
+			    + (new.tv_usec - old.tv_usec);
+
+			if (period > 1800 && abs(change) > 8) {
+				struct timex    tmx;
+
+				freq = (change * 65536.0) / period;
+
+				/*
+				 * retrieve old info 
+				 */
+				tmx.modes = 0;
+				if (adjtimex(&tmx) < 0) {
+					fprintf(stderr,
+						"adjtimex get failed\n");
+					fflush(stderr);
+				} else {
+					tmx.modes = ADJ_FREQUENCY;
+					tmx.freq += freq;
+					if (abs(tmx.freq) > 6000000) {
+						fprintf(stderr,
+						 	"freq too large\n");
+						fflush(stderr);
+					} else if (adjtimex(&tmx) < 0) {
+						fprintf(stderr,
+						 	"adjtimex failed\n");
+						fflush(stderr);
+					}
+				}
+			}
+		}
+		last = new;
+
+		{
+		  fprintf(stderr,
+			  "last %ld.%ld old %ld.%ld "
+			  "new %ld.%ld %ld(f) %ld(c) %ld(p) %lf(d)\n",
+			  oldlast.tv_sec, oldlast.tv_usec,
+			  old.tv_sec, old.tv_usec,
+			  new.tv_sec, new.tv_usec,
+			  freq,
+			  change,
+			  period,
+			  difference);
+		  fflush(stderr);
+		}
+	}
 }

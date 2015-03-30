@@ -39,7 +39,7 @@
 #define TRUE                  (1)
 #define FALSE                 (0)
 
-#define	BLKMEM_MAJOR	31
+#define	BLKMEM_MAJOR	30
 
 #define MAJOR_NR BLKMEM_MAJOR
 

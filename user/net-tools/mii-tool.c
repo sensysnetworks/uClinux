@@ -87,6 +87,7 @@ struct option longopts[] = {
     {"log",		0, 0, 'l'},	/* Set PHY (MII address) to report. */
     {"restart",		0, 0, 'r'},	/* Restart link negotiation */
     {"reset",		0, 0, 'R'},	/* Reset the transceiver. */
+    {"stop",		0, 0, 'S'},	/* stop the transceiver. */
     {"verbose", 	0, 0, 'v'},	/* Report each action taken.  */
     {"version", 	0, 0, 'V'},	/* Emit version information.  */
     {"watch", 		0, 0, 'w'},	/* Constantly monitor the port.  */
@@ -99,6 +100,7 @@ static unsigned int
     opt_version = 0,
     opt_restart = 0,
     opt_reset = 0,
+    opt_stop = 0,
     opt_log = 0,
     opt_watch = 0;
 static int nway_advertise = 0;
@@ -329,6 +331,10 @@ static int do_one_xcvr(int skfd, char *ifname, int maybe)
 	printf("resetting the transceiver...\n");
 	mdio_write(skfd, MII_BMCR, MII_BMCR_RESET);
     }
+    if (opt_stop) {
+	printf("stopping the transceiver...\n");
+	mdio_write(skfd, MII_BMCR, 0x0800);
+    }
     if (nway_advertise) {
 	mdio_write(skfd, MII_ANAR, nway_advertise | 1);
 	opt_restart = 1;
@@ -396,13 +402,14 @@ int main(int argc, char **argv)
     int i, c, ret, errflag = 0;
     char s[6];
     
-    while ((c = getopt_long(argc, argv, "A:F:p:lrRvVw?", longopts, 0)) != EOF)
+    while ((c = getopt_long(argc, argv, "A:F:p:lrRSvVw?", longopts, 0)) != EOF)
 	switch (c) {
 	case 'A': nway_advertise = parse_media(optarg); break;
 	case 'F': fixed_speed = parse_media(optarg); break;
 	case 'p': override_phy = atoi(optarg); break;
 	case 'r': opt_restart++;	break;
 	case 'R': opt_reset++;		break;
+	case 'S': opt_stop++;		break;
 	case 'v': verbose++;		break;
 	case 'V': opt_version++;	break;
 	case 'w': opt_watch++;		break;

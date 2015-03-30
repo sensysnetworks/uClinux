@@ -80,7 +80,7 @@ int	swt_reference = SWTREF_COUNT;	/* Refereence tick count */
 #ifdef CONFIG_M5272
 void watchdog_enable(void)
 {
-	*(volatile unsigned short *)(MCF_MBAR + MCFSIM_WRRR) = 0x2001;	// upper watchdog limit
+	*(volatile unsigned short *)(MCF_MBAR + MCFSIM_WRRR) = 0xec01;	// upper watchdog limit
 	*(volatile unsigned short *)(MCF_MBAR + MCFSIM_WIRR) = 0x1000;	// we don't do interrupts, just reset (o;
 	*(volatile unsigned short *)(MCF_MBAR + MCFSIM_WCR) = 0x0000;	// clear counter
 
@@ -181,7 +181,7 @@ static int __init watchdog_init(void)
 {
 	volatile unsigned long	*icrp;
 	icrp = (volatile unsigned long *) (MCF_MBAR + MCFSIM_ICR4);
-	*icrp = (*icrp & 0x77707777) | 0x000E0000;
+	*icrp = 0x000C0000;	/* IPL 4 for SWOT */
 }
 #else
 {

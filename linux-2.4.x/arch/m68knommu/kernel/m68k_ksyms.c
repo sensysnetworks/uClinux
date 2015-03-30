@@ -68,6 +68,7 @@ EXPORT_SYMBOL(strcmp);
 EXPORT_SYMBOL(strncmp);
 
 EXPORT_SYMBOL(ip_fast_csum);
+EXPORT_SYMBOL(ip_compute_csum);
 
 #if 0
 EXPORT_SYMBOL(local_irq_count);
@@ -164,3 +165,26 @@ EXPORT_SYMBOL_NOVERS(trap);
 EXPORT_SYMBOL_NOVERS(_ramvec);
 
 #endif
+
+// RTAI
+EXPORT_SYMBOL(rthal);
+extern void process_int(unsigned long vec, struct pt_regs *fp);
+EXPORT_SYMBOL(process_int);
+extern void *ret_from_interrupt;
+EXPORT_SYMBOL(ret_from_interrupt);
+extern unsigned int sw_usp, sw_ksp;
+EXPORT_SYMBOL(sw_usp);
+EXPORT_SYMBOL(sw_ksp);
+extern irq_node_t *int_irq_list;
+EXPORT_SYMBOL(int_irq_list);
+extern struct console *console_drivers;
+EXPORT_SYMBOL(console_drivers);
+extern unsigned int *mach_kstat_irqs;
+EXPORT_SYMBOL(mach_kstat_irqs);
+EXPORT_SYMBOL(mach_tick);
+extern unsigned int local_irq_count[];
+EXPORT_SYMBOL(local_irq_count);
+EXPORT_SYMBOL(rdtsc);
+
+extern void snp_gettimeofday(struct timeval *tv);
+EXPORT_SYMBOL(snp_gettimeofday);

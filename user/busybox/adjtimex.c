@@ -86,7 +86,7 @@ static char *ret_code_descript[] = {
 void usage(char *prog)
 {
 	fprintf(stderr, 
-		"Usage: %s [ -q ] [ -o offset ] [ -f frequency ] [ -p timeconstant ] [ -t tick ]\n",
+		"Usage: %s [ -q ] [ -o offset ] [ -f frequency ] [ -p timeconstant ] [ -t tick ] [ -s ]\n",
 		prog);
 }
 #define show_usage() usage(argv[0])
@@ -99,8 +99,12 @@ int main(int argc, char ** argv)
 	int c, i, ret, sep;
 	char *descript;
 	txc.modes=0;
+
+	/* fetch existing */
+	adjtimex(&txc);
+
 	for (;;) {
-		c = getopt( argc, argv, "qo:f:p:t:");
+		c = getopt( argc, argv, "qo:f:p:t:s");
 		if (c == EOF) break;
 		switch (c) {
 			case 'q':
@@ -108,7 +112,11 @@ int main(int argc, char ** argv)
 				break;
 			case 'o':
 				txc.offset = atoi(optarg);
-				txc.modes |= ADJ_OFFSET_SINGLESHOT;
+				if (txc.status & STA_PLL) {
+				  	txc.modes |= ADJ_OFFSET;
+				} else {
+				  	txc.modes |= ADJ_OFFSET_SINGLESHOT;
+				}
 				break;
 			case 'f':
 				txc.freq = atoi(optarg);
@@ -121,6 +129,14 @@ int main(int argc, char ** argv)
 			case 't':
 				txc.tick = atoi(optarg);
 				txc.modes |= ADJ_TICK;
+				break;
+			case 's':
+			  	if (txc.status & STA_PLL) {
+				  	txc.status &= ~STA_PLL;
+				} else {
+				  	txc.status |= STA_PLL;
+				}
+				txc.modes |= ADJ_STATUS;
 				break;
 			default:
 				show_usage();

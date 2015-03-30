@@ -69,7 +69,7 @@
 #endif
 
 
-#define DEF_PROTO	"cslip"
+#define DEF_PROTO	"slip"
 
 
 const char *Release = RELEASE,
@@ -343,8 +343,10 @@ tty_set_raw(struct termios *tty)
   tty->c_lflag = (0);				/* local flags		*/
   speed = (tty->c_cflag & CBAUD);		/* save current speed	*/
   tty->c_cflag = (CRTSCTS | HUPCL | CREAD);	/* UART flags		*/
-  if (opt_L) 
+  if (opt_L) {
 	tty->c_cflag |= CLOCAL;
+	tty->c_cflag &= ~CRTSCTS;
+  }
   tty->c_cflag |= speed;			/* restore speed	*/
   return(0);
 }
@@ -668,11 +670,13 @@ main(int argc, char *argv[])
 		/*NOTREACHED*/
   }
   
+  /*
   if (setvbuf(stdout,0,_IOLBF,0)) {
 	if (opt_q == 0) fprintf(stderr, _("slattach: setvbuf(stdout,0,_IOLBF,0) : %s\n"),
 				strerror(errno));
 	exit(1);
   }
+  */
 
   activate_init();
 

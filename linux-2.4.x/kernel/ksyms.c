@@ -306,9 +306,9 @@ EXPORT_SYMBOL(dentry_open);
 #ifndef NO_MM
 EXPORT_SYMBOL(filemap_nopage);
 EXPORT_SYMBOL(filemap_sync);
+#endif
 EXPORT_SYMBOL(filemap_fdatasync);
 EXPORT_SYMBOL(filemap_fdatawait);
-#endif
 EXPORT_SYMBOL(lock_page);
 EXPORT_SYMBOL(unlock_page);
 EXPORT_SYMBOL(wakeup_page_waiters);
@@ -487,6 +487,7 @@ EXPORT_SYMBOL(yield);
 EXPORT_SYMBOL(__cond_resched);
 EXPORT_SYMBOL(jiffies);
 EXPORT_SYMBOL(xtime);
+EXPORT_SYMBOL(time_adjust);
 EXPORT_SYMBOL(do_gettimeofday);
 EXPORT_SYMBOL(do_settimeofday);
 

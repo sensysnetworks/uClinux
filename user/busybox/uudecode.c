@@ -300,13 +300,13 @@ int uudecode_main (int argc,
   }
 
   if (optind == argc)
-    exit_status = decode ("stdin", outname) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    exit_status = decode ("stdin", outname) == TRUE ? EXIT_SUCCESS : EXIT_FAILURE;
   else {
     exit_status = EXIT_SUCCESS;
     do {
       if (freopen (argv[optind], "r", stdin) != NULL) {
-        if (decode (argv[optind], outname) != 0)
-          exit_status = FALSE;
+        if (decode (argv[optind], outname) != TRUE)
+          exit_status = EXIT_FAILURE;
       } else {
         perror_msg("%s", argv[optind]);
         exit_status = EXIT_FAILURE;

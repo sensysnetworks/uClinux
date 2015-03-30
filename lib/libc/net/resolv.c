@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <resolv.h>
 #include <ctype.h>
+#include <sys/poll.h>
 
 #define DNS_SERVICE 53
 #define MAX_RECURSE 5
@@ -407,11 +408,6 @@ int form_query(int id, const char * name, int type, unsigned char * packet, int 
 
 #ifdef L_dnslookup
 
-int dns_caught_signal = 0;
-void dns_catch_signal(int signo) {
-	dns_caught_signal = 1;
-}	
-
 int dns_lookup(const char * name, int type, int nscount, const char ** nsip,
 	unsigned char ** outpacket, struct resolv_answer * a)
 {
@@ -421,8 +417,6 @@ int dns_lookup(const char * name, int type, int nscount, const char ** nsip,
 	int pos;
 	static int ns = 0;
 	struct sockaddr_in sa;
-	int oldalarm;
-	__sighandler_t oldhandler;
 	struct resolv_header h;
 	struct resolv_question q;
 	int retries = 0;
@@ -496,23 +490,23 @@ int dns_lookup(const char * name, int type, int nscount, const char ** nsip,
 
 		send(fd, packet, len, 0);
 
-		dns_caught_signal = 0;
-		oldalarm = alarm(REPLY_TIMEOUT);
-		oldhandler = signal(SIGALRM, dns_catch_signal);
-	
-		i = recv(fd, packet, 512, 0);
-		
-		alarm(0);
-		signal(SIGALRM, oldhandler);
-		alarm(oldalarm);
-		
-		DPRINTF("Timeout=%d, len=%d\n",
-			dns_caught_signal, i);
-		
-		if (dns_caught_signal)
-			/* timed out, so retry send and receive,
-			   to next nameserver on queue */
+		{
+		    struct pollfd	pfd;
+		    int		milli = REPLY_TIMEOUT * 1000;
+
+		    pfd.fd = fd;
+		    pfd.events = POLLERR | POLLHUP | POLLIN | POLLNVAL;
+		    pfd.revents = 0;
+
+		    if (poll(&pfd, 1, milli) == 0 ||
+			(pfd.revents & POLLIN) == 0 ) {
+			DPRINTF("Timeout=%d, len=%d\n", REPLY_TIMEOUT, i);
 			goto again;
+		    } 
+
+		    /* got something */
+		    i = read(fd, packet, 512);
+		}
 		
 		if (i < 12)
 			/* too short ! */

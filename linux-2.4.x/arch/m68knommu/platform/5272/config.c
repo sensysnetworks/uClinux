@@ -47,6 +47,12 @@ unsigned char fec_hwaddr[6];
 unsigned char *sn;
 #endif
 
+struct ioport {
+    unsigned long	cnt;
+    unsigned short	ddr;
+    unsigned short	dat;
+};
+
 /***************************************************************************/
 
 void	reset_setupbutton(void);
@@ -89,7 +95,7 @@ void coldfire_timer_init(void (*handler)(int, void *, struct pt_regs *))
 		MCFTIMER_TMR_RESTART | MCFTIMER_TMR_ENABLE;
 
 	icrp = (volatile unsigned long *) (MCF_MBAR + MCFSIM_ICR1);
-	*icrp = 0x0000000d; /* TMR4 with priority 5 */
+	*icrp = 0x0000000c; /* TMR4 with priority 4 */
 	request_irq(72, handler, SA_INTERRUPT, "ColdFire Timer", NULL);
 
 #if defined(CONFIG_RESETSWITCH) && !defined(CONFIG_BOARD_UC5272)
@@ -277,10 +283,10 @@ void coldfire_reset(void)
 
 /***************************************************************************/
 
-#ifdef CONFIG_PPCBOOT
+#if defined(CONFIG_PPCBOOT) || defined(CONFIG_UBOOT_PARAM)
 
-#define PPCBOOT_ENV_START 0xffe04000
-#define PPCBOOT_ENV_END   0xffe06000
+#define PPCBOOT_ENV_START 0x10c40000
+#define PPCBOOT_ENV_END   0x10c50000
 
 char *ppcboot_getenv(char* v)
 {
@@ -308,12 +314,28 @@ void config_BSP(char *commandp, int size)
 {
 	unsigned char *p;
 
-#if 0
-	volatile unsigned long	*pivrp;
+#if defined( CONFIG_BOARD_MOD5272 )
+	volatile unsigned char	*pivrp;
 
 	/* Set base of device vectors to be 64 */
-	pivrp = (volatile unsigned long *) (MCF_MBAR + MCFSIM_PIVR);
+	pivrp = (volatile unsigned char *) (MCF_MBAR + MCFSIM_PIVR);
 	*pivrp = 0x40;
+#endif
+
+#if defined( CONFIG_BOARD_UC5272 )
+    {
+      /* clear all leds - u-boot should already set it up as output ports.
+       * we just set them all to 1 to turn them off.
+       */
+      volatile struct ioport * port = 
+	(struct ioport *)(MCF_MBAR + MCFSIM_PACNT);
+      
+      /* all 4 all them */
+      port->dat |= 0xf;
+
+      /* turn on the red led - led2 */
+      port->dat &= ~(1<<2);
+    }
 #endif
 
 #ifdef CONFIG_BOOTPARAM
@@ -385,6 +407,12 @@ void config_BSP(char *commandp, int size)
 	p = getbenv("APPEND");
 	if (p != NULL)
 		strcat(commandp, p);
+#elif defined(CONFIG_UBOOT_PARAM)
+	do {
+		char *bootargs = ppcboot_getenv("bootargs");
+		if (bootargs)
+			strncpy(commandp, bootargs, size);
+	} while(0);
 #else
 	memset(commandp, 0, size);
 	sprintf (commandp, "ip=dhcp console=ttyS0");

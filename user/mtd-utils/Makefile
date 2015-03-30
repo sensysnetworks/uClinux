@@ -1,6 +1,6 @@
 # -*- sh -*-
 
-# $Id: Makefile,v 1.20 2001/09/05 00:18:11 andersen Exp $
+# $Id: Makefile,v 1.1 2006/05/15 23:06:07 hui Exp $
 
 #
 # These flags are used for build native versions of the tools for the
@@ -19,7 +19,7 @@ TARGETS = erase eraseall \
 	      mkfs.jffs mkfs.jffs2 \
 	      lock unlock einfo mtd_debug fcp 
 
-BUILD_TARGETS = $(patsubst %,build/%,$(TARGETS))
+# BUILD_TARGETS = $(patsubst %,build/%,$(TARGETS))
 
 SYMLINKS = 
 JFFS2_OBJS = crc32.o mkfs.jffs2.o compr_zlib.o compr_rtime.o

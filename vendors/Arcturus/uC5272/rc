@@ -2,34 +2,319 @@
 #
 # system startup.
 
-# set up the hostname
-hostname uC5272
+pio -q a1=0			# turn on led1
 
 # mount & setup the ramdisk
 mount -n -t ramfs ramfs /var
-mkdir /var/tmp
-mkdir /var/log
-mkdir /var/run
-mkdir /var/lock
-mkdir /var/empty
-
-# Mount the proc filesystem
 mount -t proc proc /proc
+
+if test ! -f "/etc/apeg/init"; then
+    mount /dev/mtdblock4 /mnt
+    for f in apeg.rc pap-secrets; do 
+        if test ! -f /mnt/$f; then
+	    cp /etc/apeg/$f /mnt/$f
+	fi
+    done
+    touch /etc/apeg/init
+    umount /mnt
+fi
+mount -o remount,ro /dev/mtdblock3 /
+mount /dev/mtdblock4 /etc/apeg
+
+# create ram based dirs
+mkdir /var/tmp /var/log /var/run /var/lock /var/empty
+
+#
+# getenv - set up the ubootenv file. this file is looked
+# 	   at by other scripts.
+#
+ubootenv > /tmp/ubootenv
+
+pio -q c4=i
+if test "$?" = 0; then
+    echo "restoring default"
+    if test -f "/etc/apeg/system.db"; then
+        rm /etc/apeg/system.bak
+	mv /etc/apeg/system.db /etc/apeg/system.bak
+    fi
+    echo "factory=true" >> /tmp/ubootenv
+elif test -f "/etc/apeg/apeg.rc"; then
+    echo "loading customized configuration"
+    cat /etc/apeg/apeg.rc >> /tmp/ubootenv
+    if test ! -f "/etc/apeg/system.db" -a -f "/etc/apeg/system.bak"; then
+	mv /etc/apeg/system.bak /etc/apeg/system.db
+    fi
+fi
+
+. /tmp/ubootenv
+
+if test "${enable170}" != ""; then
+    serial1="rs485";
+fi
+
+if test "$serial1" = ""; then
+    if pio -q c2=i; then
+        echo "serial1=gps" >> /tmp/ubootenv
+    else
+        echo "serial1=rs485" >> /tmp/ubootenv
+    fi
+fi
+
+. /tmp/ubootenv
+
+export serial1
+export ethaddr
+export hostname
+export snaps
+
+# set up the hostname
+if test "${hostname}" = ""; then
+    hostname="apeg"
+fi
+hostname "${hostname}"
+
+if test "${vpnuser}" = ""; then
+    vpnuser="${hostname}"
+fi
+
+if test "${vpnpass}" = ""; then
+    vpnpass="nrtw0ek"
+fi
+echo "${vpnuser} \* ${vpnpass} \*" > /tmp/chap-secrets
+
+(
+    cat /etc/apeg/pap-secrets
+    if test "${ispuser}" != ""; then
+	echo "${ispuser} \* \"${isppass}\" \*"
+    fi
+) > /tmp/pap-secrets
+
+# set up timezone
+if test "${TZ}" = ""; then
+    TZ=PST8PDT
+fi
+export TZ
 
 # Configure local loopback:
 ifconfig lo 127.0.0.1 netmask 255.0.0.0
 
-# Configure internal 10/100 ethernet controller:
-ifconfig eth0 inet 192.168.1.200 netmask 255.255.255.0
+# default to static
+if test "${ipmode}" = ""; then
+    ipmode="static"
+fi
 
-# Configure CrystalLan 10base-T controller:
-# ifconfig eth1 inet 192.168.2.200 netmask 255.255.255.0
-# or:
-# /bin/dhcpcd eth1 &
+# check eth0 configuration
+if test "${eth0mode}" = "disable"; then
+    echo "disabling eth0"
+    ifconfig eth0 down
+elif test "${ipmode}" = "static" -a "${ipaddr}" != ""; then
+    if test "${eth0mask}" = ""; then
+	eth0mask="255.255.255.0"
+    fi
+    echo "configuring static ip ${ipaddr} netmask ${eth0mask}"
+    if ifconfig eth0 ${ipaddr} netmask "${eth0mask}" up; then
+	: noop
+    elif ifconfig eth0 ${ipaddr} netmask 255.255.255.0 up; then
+	: noop
+    else
+	ifconfig eth0 192.168.2.100 netmask 255.255.255.0 up
+    fi
 
-# Uncomment this line to add a default gateway
-# route add -net 0.0.0.0 netmask 0.0.0.0 gw 192.168.1.100
+    if test "${dns}" != ""; then
+	echo "adding nameserver ${dns}"
+	echo "nameserver ${dns}"  > /etc/resolv.conf
+    fi
+    if test "${gateway}" != ""; then
+	echo "adding default gateway ${gateway}"
+        route add -net default gw "${gateway}"
+    fi
 
-# Uncomment these lines to automatically mount an nfs filesystem:
-# /bin/portmap &
-# /bin/mount 192.168.1.100:/tftpboot /mnt
+    killall sdate > /dev/null 2>&1
+    sdate >> /dev/null 2>&1 &
+    if test "${snaps}" != ""; then
+	sexec /bin/vpn/vpn-connect ${snaps} call vpn ipparam pptp &
+    fi
+    if test -f /proc/sys/net/ipv4/ip_forward; then
+	echo "1" > /proc/sys/net/ipv4/ip_forward
+    fi
+elif test "${ipmode}" = "gprs"; then
+    if test "${ipaddr}" != ""; then
+        if test "${eth0mask}" = ""; then
+	    eth0mask="255.255.255.0"
+    	fi
+    	echo "configuring static ip ${ipaddr} netmask ${eth0mask}"
+    	ifconfig eth0 ${ipaddr} netmask "${eth0mask}" up
+    else
+    	echo "disabling eth0"
+    	ifconfig eth0 down
+    	mii-tool --stop > /dev/null 2>&1
+    fi
+    sexec /bin/vpn/sp-connect > /dev/null 2>&1 &
+else
+    echo "configuring eth0 using dhcp"
+    xdhcpcd eth0 &
+fi
+
+#inarpd > /dev/null 2>&1 &
+bdd > /dev/null 2>&1 &
+
+# this seems to only work after configuring
+# the network.
+if test "$eth0mode" = "disable"; then
+    mii-tool --stop > /dev/null 2>&1
+elif test "$eth0mode" = "auto"; then
+    : noop
+else
+    mii-tool --force=10baseT-HD > /dev/null 2>&1
+fi
+
+# enable inetd
+inetd &
+
+# httpd
+/bin/thttpd -d /home/httpd -c /cgi-bin/\*.cgi &
+
+#
+touch /var/tmp/resolv.conf
+
+sns_args="nts=1"
+if test "$nts" = "no"; then
+    sns_args="nts=0"
+fi
+
+# radio
+insmod i2c-algo-bit
+insmod i2c-adap-mcf_gpio
+insmod i2c-dev
+
+radioGain=`i2cread -g`
+radioPeak=`i2cread -p`
+radioId=`i2cread -i`
+
+rmmod i2c-dev
+rmmod i2c-adap-mcf_gpio
+rmmod i2c-algo-bit
+
+if test "$radioGain" != ""; then
+    sns_args="$sns_args radioGain=$radioGain"
+fi
+
+if test "$radioPeak" != ""; then
+    sns_args="$sns_args radioPeak=$radioPeak"
+fi
+
+if test "$radioId" != ""; then
+    sns_args="$sns_args radioId=$radioId"
+fi
+
+if test "$assemblyid" != ""; then
+    sns_args="$sns_args assemblyId=$assemblyid"
+fi
+if test "$apegid" != ""; then
+    sns_args="$sns_args apegId=$apegid"
+fi
+
+
+# install modules
+insmod rtai.o
+insmod rtsock.o
+insmod sns.o $sns_args
+
+xport_arg=
+if [ "$xport" != "" ]; then
+    xport_arg="external-port=$xport"
+fi
+sncserver > /dev/null 2>&1 &
+tabledb > /dev/null 2>&1 &
+sncproxy udp=1 listen=10000 host=localhost port=9000 $xport_arg > /dev/null 2>&1 &
+kg > /dev/null 2>&1 &
+sleep 5
+
+# dnload -code /tmp/dot.ldrec localhost > /dev/null 2>&1 &
+
+# see if we need to monitor the ppp host.
+if test "${pppmonhost}" != ""; then
+    sexec pppmon host="${pppmonhost}" pname=pppd > /dev/null 2>&1 &
+fi
+
+# see if we need to monitor dhcp
+if test "${dhcpmonhost}" != ""; then
+    sexec pppmon host="${dhcpmonhost}" pname=dhcpcd > /dev/null 2>&1 &
+fi
+
+# select serial port function for access point
+#
+if test "${serial1}" = "rs485"; then
+    pio -q cd=1 cf=1 c7=1 c1=0
+elif test "${serial1}" = "rs232"; then
+    : noop
+elif test "${serial1}" = "gps"; then
+    pio -q c5=0 c5=1 cd=0 cf=1 c7=1 c1=0
+    gpsd > /tmp/gpsd.log 2>&1 &
+fi
+
+if test "${ipmode}" != "gprs"; then
+    sexec agetty 9600 ttyS0 > /dev/null 2>&1 &
+fi
+
+# event proxy section
+if test "${eproxy_port}" != ""; then
+    if test "${mass_massMode}" = ""; then
+	mass_massMode="0"
+    fi
+    if test "${eproxy_adaptiveHold}" != ""; then
+	sexec eventproxy host=localhost serverPort="${eproxy_port}" massMode="${mass_massMode}" \
+adaptiveHold="${eproxy_adaptiveHold}" > /dev/null 2>&1 &
+    else
+	sexec eventproxy host=localhost serverPort="${eproxy_port}" massMode="${mass_massMode}" \
+> /dev/null 2>&1 &
+    fi
+fi
+
+# APSTAT SECTION
+xappushstat > /dev/null 2>&1 &
+xappollstat > /dev/null 2>&1 &
+xappollstat_tcp > /dev/null 2>&1 &
+xapmarksman > /dev/null 2>&1 &
+xappollstat_ctd4 > /dev/null 2>&1 &
+
+# APDIAG SECTION
+xapdiag > /dev/null 2>&1 &
+
+# APCOUNT SECTION
+xapcount > /dev/null 2>&1 &
+
+# MASTER170 SECTION
+xmaster170 > /dev/null 2>&1 &
+
+# HAS SECTION
+xevil > /dev/null 2>&1 &
+
+# STS SECTION
+xsts > /dev/null 2>&1 &
+
+# APGI SECTION
+xapgi > /dev/null 2>&1 &
+
+# APREVERSE SECTION
+xapreverse > /dev/null 2>&1 &
+
+# working copy of apeg.rc
+if test -f "/etc/apeg/apeg.rc"; then
+    cp /etc/apeg/apeg.rc /tmp/apegrc.ram
+    /bin/license ; echo "license=$?" >> /tmp/apegrc.ram
+fi
+
+# run iptables if there is one
+if test -f "/etc/apeg/iptables"; then
+    . /etc/apeg/iptables
+fi
+
+# run localrc if there is one
+if test -f "/etc/apeg/localrc"; then
+    . /etc/apeg/localrc
+fi
+
+pio -q a2=1			# turn off led2 (red)
+
+exit 0

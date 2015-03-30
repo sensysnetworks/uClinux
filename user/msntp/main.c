@@ -621,6 +621,11 @@ in daemon mode. */
 
 /* If the correction is large, ask for confirmation before proceeding. */
 
+    {
+	fprintf(stderr, "reset_clock: %lf (o) %lf (e) %lf (me)\n",
+		offset, error, minerr);
+	fflush(stderr);
+    }
     if (absoff > prompt) {
         if (! daemon && ftty(stdin) && ftty(stdout)) {
             printf("The time correction is %.3f +/- %.3f+%.3f seconds\n",
@@ -644,7 +649,7 @@ in daemon mode. */
             fprintf(stderr,"%s: correction %.3f +/- %.3f+%.3f secs - ignored\n",
                 argv0,offset,dispersion,error);
         return 0.0;
-    } else if (absoff < 2.0*error) {
+    } else if (absoff < (3.0*error)) {
         if (daemon ? verbose > 1 : verbose)
             fprintf(stderr,
                 "%s: correction %.3f +/- %.3f+%.3f secs - suppressed\n",
@@ -947,7 +952,11 @@ discrepancy, when appropriate. */
     x = *a_offset+d*drift;
     if (verbose > 2)
         fprintf(stderr,"Correction %.6f @ %.6f off=%.6f ",x,*a_when,*a_offset);
-    if (d >= waiting && (x < 0.0 ? -x : x) >= 0.5*minerr) {
+    /*
+     * dont correct the drift since we use adjtimex to adjust the 
+     * offset.
+     */
+    if (0 && d >= waiting && (x < 0.0 ? -x : x) >= 0.5*minerr) {
         if (verbose > 2) fprintf(stderr,"performed\n");
         adjust_time(x,(action == action_reset ? 1 : 0),0.5*minerr);
         *a_offset = 0.0;

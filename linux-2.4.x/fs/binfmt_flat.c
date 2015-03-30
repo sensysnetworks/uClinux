@@ -682,7 +682,7 @@ static int load_flat_file(struct linux_binprm * bprm,
 	rev       = ntohl(hdr->rev);
 
 	if (flags & FLAT_FLAG_KTRACE)
-		printk("BINFMT_FLAT: Loading file: %s\n", bprm->filename);
+		DBG_FLT("BINFMT_FLAT: Loading file: %s\n", bprm->filename);
 
 	if (strncmp(hdr->magic, "bFLT", 4) ||
 			(rev != FLAT_VERSION && rev != OLD_FLAT_VERSION &&

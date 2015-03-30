@@ -575,6 +575,7 @@ extern void (*disestablish_ppp_hook) __P((int));
 #define EXIT_PEER_DEAD		15
 #define EXIT_HANGUP		16
 #define EXIT_LOOPBACK		17
+#define EXIT_AUTH_TOPEER_FAILED	19
 
 /*
  * Debug macros.  Slightly useful for finding bugs in pppd, not particularly

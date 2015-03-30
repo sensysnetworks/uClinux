@@ -284,6 +284,9 @@ clean: modules_clean
 	rm -f $(LINUXDIR)/linux
 	rm -rf $(LINUXDIR)/net/ipsec/alg/libaes $(LINUXDIR)/net/ipsec/alg/perlasm
 
+depend:
+	for dir in $(LINUXDIR) $(DIRS); do [ ! -d $$dir ] || $(MAKEARCH) -C $$dir depend ; done
+
 real_clean mrproper: clean
 	-$(MAKEARCH_KERNEL) -C $(LINUXDIR) mrproper
 	-$(MAKEARCH) -C config clean

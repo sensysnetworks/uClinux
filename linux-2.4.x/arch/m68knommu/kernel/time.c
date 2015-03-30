@@ -158,6 +158,31 @@ void do_gettimeofday(struct timeval *tv)
 	tv->tv_usec = usec;
 }
 
+void snp_gettimeofday(struct timeval *tv)
+{
+	extern volatile unsigned long wall_jiffies;
+	unsigned long flags;
+	unsigned long usec, sec, lost;
+
+	read_lock_irqsave(&xtime_lock, flags);
+	usec = mach_gettimeoffset ? mach_gettimeoffset() : 0;
+	lost = jiffies - wall_jiffies;
+	if (lost)
+		usec += lost * (1000000/HZ);
+	sec = xtime.tv_sec;
+	usec += xtime.tv_usec;
+	read_unlock_irqrestore(&xtime_lock, flags);
+
+	while (usec >= 1000000) {
+		usec -= 1000000;
+		sec++;
+	}
+
+	tv->tv_sec = sec;
+	tv->tv_usec = usec;
+}
+
+
 void do_settimeofday(struct timeval *tv)
 {
 	write_lock_irq(&xtime_lock);

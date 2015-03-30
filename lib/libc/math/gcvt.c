@@ -12,7 +12,8 @@
 char * gcvt(double f, size_t ndigit, char * buf)
 {
   int i;
-  unsigned long long z,k;
+  int l1,l2; //length of float before and after
+  unsigned long long z,k,k2;
   int exp = 0;
   char *c = buf;
   double f2,t,scal;
@@ -32,13 +33,14 @@ char * gcvt(double f, size_t ndigit, char * buf)
   if (f < 0.0) {
     sign = 1;
     f = -f;
+
 	 buf++;
   }
 
   scal = 1;
   for (i=ndigit; i>0; i--)
 	  scal *= 10;
-  k = f + 0.1 / scal;
+  k = f + 0.5 / scal;
   f2 = f - k;
   if (!f) {
     PSH('0');
@@ -56,7 +58,24 @@ char * gcvt(double f, size_t ndigit, char * buf)
   	i++;
   }
 
-  buf += i + ndigit + 1; 	
+  l1 = i;
+
+  k2 = k;
+
+  l2 = 1;
+  do {
+	if(k2>=10) {
+		l2++;
+	}
+    k2 /= 10;
+  }while (k2);
+
+/* increase pointer if it rolls over an extra digit */
+  if(l2>l1) {
+  	buf += i + ndigit + 2; 
+  } else {
+  	buf += i + ndigit + 1; 
+  }
 
   PSH1(0);
 
@@ -73,8 +92,12 @@ char * gcvt(double f, size_t ndigit, char * buf)
   else
     PSH1(0);
 
+  l2 = 1;
   do {
     PSH1('0'+ (k % 10));
+	if(k>=10) {
+		l2++;
+	}
     k /= 10;
   }while (k);
 

@@ -56,7 +56,7 @@ static char tbl_std[64] = {
  * buffer of at least 1+BASE64_LENGTH(length) bytes.
  * where BASE64_LENGTH(len) = (4 * ((LENGTH + 2) / 3))
  */
-static void uuencode (const char *s, const char *store, const int length, const char *tbl)
+static void uuencode (const unsigned char *s, const char *store, const int length, const char *tbl)
 {
 	int i;
 	unsigned char *p = (unsigned char *)store;
@@ -82,7 +82,7 @@ static void uuencode (const char *s, const char *store, const int length, const 
 
 int uuencode_main(int argc, char **argv)
 {
-	const int src_buf_size = 60;	// This *MUST* be a multiple of 3
+	const int src_buf_size = 45;	// This *MUST* be a multiple of 3
 	const int dst_buf_size = 4 * ((src_buf_size + 2) / 3);
 	RESERVE_BB_BUFFER(src_buf, src_buf_size + 1);
 	RESERVE_BB_BUFFER(dst_buf, dst_buf_size + 1);
@@ -158,7 +158,7 @@ int uuencode_main(int argc, char **argv)
 			if (column == 0) {
 				putchar('\n');
 				if (tbl == tbl_std) {
-					putchar('M');
+				    putchar(tbl[size]);
 				}
 			}
 			/* Write to the 60th column */

@@ -60,7 +60,8 @@
 #include <linux/linkage.h>
 #include <asm/setup.h>
 #include <asm/segment.h>
-
+#include <asm/rt_level.h>
+	
 #include "m68k_defs.h"
 
 LENOSYS = 38
@@ -87,85 +88,74 @@ LPC			= 0x30
  *	construct a usp in software... When doing this we need to disable
  *	interrupts, otherwise bad things could happen.
  */
-#define SAVE_ALL						\
-	move	#0x2700,%sr;		/* disable intrs */	\
-	btst	#5,%sp@(2);		/* from user? */	\
-	bnes	6f;			/* no, skip */		\
-	movel	%sp,sw_usp;		/* save user sp */	\
-	addql	#8,sw_usp;		/* remove exception */	\
-	movel	sw_ksp,%sp;		/* kernel sp */		\
-	subql	#8,%sp;			/* room for exception */\
-	clrl	%sp@-;			/* stk_adj */		\
-	movel	%d0,%sp@-;		/* orig d0 */		\
-	movel	%d0,%sp@-;		/* d0 */		\
-	subl	#32,%sp;		/* space for 8 regs */	\
-	moveml	%d1-%d5/%a0-%a2,%sp@;				\
-	movel	sw_usp,%a0;		/* get usp */		\
-	moveml	%a0@(-8),%d1-%d2;	/* get exception */	\
-	moveml	%d1-%d2,%sp@(LFORMATVEC); /* copy exception */	\
-	bra	7f;						\
-	6:							\
-	clrl	%sp@-;			/* stk_adj */		\
-	movel	%d0,%sp@-;		/* orig d0 */		\
-	movel	%d0,%sp@-;		/* d0 */		\
-	subl	#32,%sp;		/* space for 7 regs */	\
-	moveml	%d1-%d5/%a0-%a2,%sp@;				\
-	7:
-
-#define RESTORE_ALL						\
-	btst	#5,%sp@(LSR);		/* going user? */	\
-	bnes	8f;			/* no, skip */		\
-	move	#0x2700,%sr;		/* disable intrs */	\
-	movel	sw_usp,%a0;		/* get usp */		\
-	moveml	%sp@(LFORMATVEC),%d1-%d2; /* copy exception */	\
-	moveml	%d1-%d2,%a0@(-8);				\
-	moveml	%sp@,%d1-%d5/%a0-%a2;				\
-	addl	#32,%sp;		/* space for 8 regs */	\
-	movel	%sp@+,%d0;					\
-	addql	#4,%sp;			/* orig d0 */		\
-	addl	%sp@+,%sp;		/* stk adj */		\
-	addql	#8,%sp;			/* remove exception */	\
-	movel	%sp,sw_ksp;		/* save ksp */		\
-	subql	#8,sw_usp;		/* set exception */	\
-	movel	sw_usp,%sp;		/* restore usp */	\
-	rte;							\
-	8:							\
-	moveml	%sp@,%d1-%d5/%a0-%a2;				\
-	addl	#32,%sp;		/* space for 8 regs */	\
-	movel	%sp@+,%d0;					\
-	addql	#4,%sp;			/* orig d0 */		\
-	addl	%sp@+,%sp;		/* stk adj */		\
-	rte
-
-/*
- *	Quick exception save, use current stack only.
- */
-#define SAVE_LOCAL						\
-	move	#0x2700,%sr;		/* disable intrs */	\
-	clrl	%sp@-;			/* stk_adj */		\
-	movel	%d0,%sp@-;		/* orig d0 */		\
-	movel	%d0,%sp@-;		/* d0 */		\
-	subl	#32,%sp;		/* space for 8 regs */	\
+#define SAVE_ALL \
+	movew	#0x2700,%sr	; \
+	btst	#5,%sp@(2)	; \
+	bnes	1f		; \
+				; \
+	link	%a0,#12		; \
+	movel	%sp,sw_usp	; \
+	movel	sw_ksp,%sp	; \
+	movel	%a0@(8),%sp@-	; \
+	movel	%a0@(4),%sp@-	; \
+	movel	%a0@,%a0	; \
+1:				; \
+	movew	#LINUX_IRQS_DISABLE,%sr	; \
+	clrl	%sp@-		; \
+	movel	%d0,%sp@-	; \
+	movel	%d0,%sp@-	; \
+	lea	%sp@(-32),%sp	; \
 	moveml	%d1-%d5/%a0-%a2,%sp@;
-
+	
+#define RESTORE_ALL		\
+	moveml	%sp@,%d1-%d5/%a0-%a2; \
+	lea	%sp@(32),%sp	; \
+	movel	%sp@+,%d0	; \
+	addql	#4,%sp		; \
+	addl	%sp@+,%sp	; \
+				; \
+	move	#0x2700,%sr	; \
+	btst	#5,%sp@(2)	; \
+	bnes	1f		; \
+				; \
+	link	%a0,#12		; \
+	movel	%sp,sw_ksp	; \
+	movel	sw_usp,%sp	; \
+	movel	%a0@(8),%sp@-	; \
+	movel	%a0@(4),%sp@-	; \
+	movel	%a0@,%a0	; \
+1:				; \
+	rte			; 
+			
+ /*
+  *	Quick exception save, use current stack only.
+  */
+#define SAVE_LOCAL						\
+	move	#LINUX_IRQS_DISABLE,%sr;/* disable intrs */	\
+ 	clrl	%sp@-;			/* stk_adj */		\
+ 	movel	%d0,%sp@-;		/* orig d0 */		\
+ 	movel	%d0,%sp@-;		/* d0 */		\
+	lea	%sp@(-32),%sp;		/* space for 8 regs */	\
+ 	moveml	%d1-%d5/%a0-%a2,%sp@;
+ 
 #define RESTORE_LOCAL						\
-	moveml	%sp@,%d1-%d5/%a0-%a2;				\
-	addl	#32,%sp;		/* space for 8 regs */	\
-	movel	%sp@+,%d0;					\
-	addql	#4,%sp;			/* orig d0 */		\
-	addl	%sp@+,%sp;		/* stk adj */		\
+ 	moveml	%sp@,%d1-%d5/%a0-%a2;				\
+	lea	%sp@(32),%sp;		/* space for 8 regs */	\
+ 	movel	%sp@+,%d0;					\
+ 	addql	#4,%sp;			/* orig d0 */		\
+ 	addl	%sp@+,%sp;		/* stk adj */		\
 	rte
 
 
 #define SWITCH_STACK_SIZE (6*4+4)	/* includes return address */
 
 #define SAVE_SWITCH_STACK		\
-	subl    #24,%sp; /* 6 regs */	\
+	lea     %sp@(-24),%sp;	/* 6 regs */	\
 	moveml	%a3-%a6/%d6-%d7,%sp@
 
 #define RESTORE_SWITCH_STACK		\
 	moveml	%sp@,%a3-%a6/%d6-%d7;	\
-	addl	#24,%sp /* 6 regs */
+	lea	%sp@(24),%sp /* 6 regs */
 
 /*
  *	Software copy of the user and kernel stack pointers... Ugh...
@@ -340,38 +330,25 @@ Lsignal_return:
 	RESTORE_SWITCH_STACK
 	addql	#4,%sp
 
-	btst    #5,%sp@(LSR);	/* going user? */   
-	bnes    not_user;	/* no, skip */      
-	move    #0x2700,%sr;	/* disable intrs */ 
-	movel   sw_usp,%a0;	/* get usp */       
-	moveml  %sp@(LFORMATVEC),%d1-%d2; /* copy exception */  
-	moveml  %d1-%d2,%a0@(-8);               
-	bclr    #5,%a0@(-8);  /* clear format byte, bit 5 to make stack appear modulo 4 which it WILL be when we do the rte because it was generated in setup_frame */
-	bclr    #4,%a0@(-8);  /* clear format byte, bit 4 to make stack appear modulo 4 which it WILL be when we do the rte because it was generated in setup_frame */
+	moveml	%sp@,%d1-%d5/%a0-%a2
+	lea	%sp@(32),%sp
+	movel	%sp@+,%d0
+	addql	#4,%sp
+	addl	%sp@+,%sp
 
-	/*
-	 * if an app is getting tricky and using "a5",  the signal handler
-	 * may trigger while "a5" is invalid,  so we have to set it here
-	 */
-	jsr 	SYMBOL_NAME(get_pic_a5)
-	movel	%d0, %a5
+	move	#0x2700,%sr
+	btst	#5,%sp@(2)
+	bnes	1f
 
-	moveml  %sp@,%d1-%d5/%a0-%a2;               
-	addl    #32,%sp;        /* space for 8 regs */  
-	movel   %sp@+,%d0;                  
-	addql   #4,%sp;         /* orig d0 */       
-	addl    %sp@+,%sp;      /* stk adj */       
-	addql   #8,%sp;         /* remove exception */  
-	movel   %sp,sw_ksp;     /* save ksp */      
-	movel   sw_usp,%sp;     /* restore usp */   
-	subql   #8,%sp;         /* set exception */ 
-	rte;                            
-not_user:                          
-	moveml  %sp@,%d1-%d5/%a0-%a2;               
-	addl    #32,%sp;        /* space for 8 regs */  
-	movel   %sp@+,%d0;                  
-	addql   #4,%sp;         /* orig d0 */       
-	addl    %sp@+,%sp;      /* stk adj */       
+	link	%a0,#12
+	movel	%sp,sw_ksp
+	movel	sw_usp,%sp
+	movel	%a0@(8),%sp@-
+	movel	%a0@(4),%sp@-
+	movel	%a0@,%a0
+	bclr	#4,%sp@
+	bclr	#5,%sp@
+1:
 	rte
 
 /*--------------------------------------------------------------------------*/
@@ -410,19 +387,12 @@ SYMBOL_NAME_LABEL(inthandler)
 					| get addr of kstat struct
 	addql	#1,%a0@(%d0)		| incr irq intr count
 
-	lsrl	#2,%d0			| calculate real vector #
-	movel	%d0,%d1			| calculate array offset
-	lsll	#4,%d1
-	lea	SYMBOL_NAME(irq_list),%a0
-	addl	%d1,%a0			| pointer to array struct
-
 	movel	%sp,%sp@-		| push regs arg onto stack
-	movel	%a0@(8),%sp@-		| push devid arg
+	lsrl	#2,%d0			| calculate real vector #
 	movel	%d0,%sp@- 		| push vector # on stack
-
-	movel	%a0@,%a0		| get function to call
+	lea	SYMBOL_NAME(process_int),%a0
 	jbsr	%a0@			| call vector handler
-	addl	#12,%sp			| pop parameters off stack
+	addl	#8,%sp			| pop parameters off stack
 
 	bra	ret_from_interrupt	| this was fallthrough
 
@@ -444,16 +414,11 @@ SYMBOL_NAME_LABEL(fasthandler)
 	addql	#1,%a0@(%d0)		| incr irq intr count
 
 	movel	%sp,%sp@-		| push regs arg onto stack
-	clrl	%d1
-	movel	%d1,%sp@- 		| push devid arg
 	lsrl	#2,%d0			| calculate real vector #
 	movel	%d0,%sp@- 		| push vector # on stack
-
-	lsll	#4,%d0			| adjust for array offset
-	lea	SYMBOL_NAME(irq_list),%a0
-	movel	%a0@(%d0),%a0		| get function to call
+	lea	SYMBOL_NAME(process_int),%a0
 	jbsr	%a0@			| call vector handler
-	addl	#12,%sp			| pop parameters off stack
+	addl	#8,%sp			| pop parameters off stack
 
 	RESTORE_LOCAL
 
@@ -547,7 +512,7 @@ SYMBOL_NAME_LABEL(resume)
 	movew	%d0,%a0@(TASK_THREAD+THREAD_SR)
 
 	/* disable interrupts */
-	oril	#0x700,%d0
+	oril	#LINUX_IRQS_DISABLE,%d0
 	move	%d0,%sr
 
 #ifndef NO_MM

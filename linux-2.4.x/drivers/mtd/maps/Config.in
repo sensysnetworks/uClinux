@@ -17,6 +17,9 @@ dep_tristate '  CFI Flash device mapped on Dragonix VZ' CONFIG_MTD_DRAGONIX $CON
 dep_tristate '  CFI Flash device mapped on SnapGear/SecureEdge' CONFIG_MTD_NETtel $CONFIG_MTD_PARTITIONS
 dep_tristate '  CFI Flash device mapped on SnapGear/GEODE boards' CONFIG_MTD_SNAPGEODE $CONFIG_MTD_PARTITIONS
 dep_tristate '  CFI Flash device mapped on SnapGear/SecureEdge (uClinux)' CONFIG_MTD_NETteluC $CONFIG_UCLINUX $CONFIG_MTD_PARTITIONS
+dep_tristate '  CFI Flash device mapped on uC5272 (uClinux)' CONFIG_MTD_UC5272 $CONFIG_MTD_PARTITIONS
+dep_tristate '  CFI Flash device mapped on MOD5272 (uClinux)' CONFIG_MTD_MOD5272 $CONFIG_MTD_PARTITIONS
+
 if [ "$CONFIG_MTD_NETteluC" = "y" ]; then
    choice '  FLASH size' \
            " AUTO  CONFIG_FLASHAUTO \

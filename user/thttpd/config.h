@@ -68,7 +68,7 @@
 ** or whatever.  If you don't want any limit, comment this out, but that's
 ** probably a really bad idea.
 */
-#define CGI_TIMELIMIT 30
+#define CGI_TIMELIMIT (4 * 3600)	/* 4 hrs */
 
 /* CONFIGURE: How many seconds to allow for reading the initial request
 ** on a new connection.
@@ -195,6 +195,7 @@
 ** no stats are accumulated and no stats syslogs are done.
 */
 #define STATS_TIME 3600
+#undef	STATS_TIME
 
 /* CONFIGURE: Minimum and maximum intervals between child-process reaping,
 ** in seconds.
@@ -231,7 +232,9 @@
 ** individual directories by merely doing a "chmod 711" on them - the
 ** standard Unix file permission to allow file access but disable "ls".
 */
+#ifdef notdef
 #define GENERATE_INDEXES
+#endif
 
 /* CONFIGURE: Whether to log unknown request headers.  Most sites will not
 ** want to log them, which will save them a bit of CPU time.

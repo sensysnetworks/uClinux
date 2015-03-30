@@ -23,8 +23,9 @@
 /* Chip select and memory setup for Arcturus Networks' uC5272 dimm. */
 
 #define	MEM_BASE	0x00000000	/* Memory base at address 0 */
-#define	MEM_SIZE	0x00800000	/* Memory size 8Mb */
+#define	MEM_SIZE	0x01000000	/* Memory size 16Mb */
 #define	VBR_BASE	MEM_BASE	/* Vector address */
+#define RAMBAR_CONFIG	0x01800035	/* rw data only SRAM at 0x01800000 */
 
 /*****************************************************************************/
 
@@ -80,7 +81,30 @@ _start:
 	
 	/* jsr	disablecache */
 	 jsr	enablecache 
+	 jsr	enablescratchram
 
+
+	/* disable interrupts on icr1 - u-boot
+	 * enabled and uses interrupts on icr1. if we
+	 * don't disable it before initializaiton, bad 
+	 * things would happen.
+	 */
+	move.l #(MCF_MBAR+MCFSIM_ICR1), %a0
+	move.l #0x88888888, (%a0)
+	move.l #(MCF_MBAR+MCFSIM_ICR2), %a0
+	move.l #0x88888888, (%a0)
+	move.l #(MCF_MBAR+MCFSIM_ICR3), %a0
+	move.l #0x88888888, (%a0)
+	move.l #(MCF_MBAR+MCFSIM_ICR4), %a0
+	move.l #0x88880000, (%a0)
+	
+	/* reset the uart */
+	move.l #(MCF_MBAR+0x108), %a0
+	move.b #0x2a, (%a0)
+	move.b #0x3a, (%a0)
+	move.b #0x1a, (%a0)
+	move.b #0x4a, (%a0)
+	move.b #0x7a, (%a0)
 
 #ifdef CONFIG_ROMFS_FS
 	/*
@@ -103,19 +127,8 @@ _copy_romfs:
 	move.l	%d0, -(%a1)
 	cmp.l	%a0, %a2			/* Check if at end */
 	bne	_copy_romfs
-#endif
-
-/* set leds on test */	
-_setup_port_c:	
-/* set up port c */
-	move.l #0x10000094, %a0                 /* ddr */
-	move.b #0xff,(%a0)
-	move.l #0x10000096, %a0                 /* data */
-	move.b #0x12,(%a0)
-	/*jmp _exit */                              /* thassall */
+#else
 	
-
-#ifdef  CONFIG_UC5272_CRAMFS
 /* Tell setup.c where the heap starts:	 */
 	lea.l	_end_romfs, %a0			/* Get end of romfs */
 	move.l	%a0,%d0
@@ -170,4 +183,11 @@ enablecache:
 	move.l	#0x80000100, %d0		/* Setup cache mask */
 	movec	%d0, %CACR			/* Enable cache */
 	rts
+
+/* Enable the sram: (clobbers %d0) */
+enablescratchram:
+	move.l	#RAMBAR_CONFIG, %d0		/* RAMBAR configuration cmd */
+	movec	%d0, %RAMBAR0			/* Invalidate cache */
+	rts
+
 /*****************************************************************************/

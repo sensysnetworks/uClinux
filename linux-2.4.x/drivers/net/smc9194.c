@@ -146,7 +146,7 @@ typedef unsigned int smcio_t;
 
 #ifdef CONFIG_NETtel
 static smcio_t smc_portlist[]      = { 0x30600300, 0x30600000, 0 };
-static unsigned int smc_irqlist[]  = {         29,         27, 0 };
+static unsigned int smc_irqlist[]  = {         28,         27, 0 };
 #elif defined(CONFIG_SH_KEYWEST)
 static smcio_t smc_portlist[]      = { KEYWEST_ETHR, 0 };
 static unsigned int smc_irqlist[]  = { IRQ4_IRQ,     0 };
@@ -812,6 +812,10 @@ int __init smc_init(struct net_device *dev)
 	int i;
 	/*  check for special auto-probe address */
 	int base_addr = (dev && dev->base_addr != 0xffe0) ? dev->base_addr : 0;
+
+#ifdef CONFIG_NETtel
+	*((volatile unsigned char *) MCF_MBAR + MCFSIM_IRQPAR) |= IRQ5_LEVEL4;
+#endif
 
 	SET_MODULE_OWNER(dev);
 

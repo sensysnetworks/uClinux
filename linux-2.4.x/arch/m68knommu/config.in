@@ -208,6 +208,7 @@ fi
 if [ "$CONFIG_M5272" = "y" ]; then
 	bool 'Motorola M5272C3 board support' CONFIG_M5272C3
 	bool 'SecureEdge SE1100 board support' CONFIG_SE1100
+	bool 'Netburner MOD5272 board support' CONFIG_BOARD_MOD5272
 	
 	bool 'Arcturus Networks uC5272 dimm board support' CONFIG_BOARD_UC5272
 	if [ "$CONFIG_BOARD_UC5272" = "y" ]; then
@@ -590,6 +591,8 @@ bool 'Compiled-in Kernel Boot Parameter' CONFIG_BOOTPARAM
 if [ "$CONFIG_BOOTPARAM" = "y" ]; then
   string 'Kernel Boot Parameter' CONFIG_BOOTPARAM_STRING ""
 fi
+
+bool 'U-Boot Parameter Support' CONFIG_UBOOT_PARAM
 
 endmenu
 

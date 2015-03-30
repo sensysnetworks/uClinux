@@ -109,7 +109,7 @@ extern void sys_free_irq(unsigned int, void *);
 
 #endif /* CONFIG_M68360 */
 
-#ifndef CONFIG_COLDFIRE
+// #ifndef CONFIG_COLDFIRE
 /*
  * This structure is used to chain together the ISRs for a particular
  * interrupt source (if it supports chaining).
@@ -122,7 +122,7 @@ typedef struct irq_node {
 	struct irq_node *next;
 } irq_node_t;
 
-#endif /* CONFIG_COLDFIRE */
+// #endif /* CONFIG_COLDFIRE */
 
 /*
  * This structure has only 4 elements for speed reasons

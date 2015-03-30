@@ -49,6 +49,10 @@ asmlinkage void resume(void);
   (last) = _last; 									\
 }
 
+#if 1
+#include <asm/rt.h>
+#else
+
 #ifdef CONFIG_COLDFIRE
 #define __sti() __asm__ __volatile__ ( \
 	"move %/sr,%%d0\n\t" \
@@ -59,7 +63,7 @@ asmlinkage void resume(void);
         : "cc", "%d0", "memory")
 #define __cli() __asm__ __volatile__ ( \
 	"move %/sr,%%d0\n\t" \
-	"ori.l  #0x0700,%%d0\n\t" \
+	"ori.l  #0x0400,%%d0\n\t" \
 	"move %%d0,%/sr\n" \
 	: /* no inputs */ \
 	: \
@@ -78,14 +82,15 @@ asmlinkage void resume(void);
 #define	__save_and_cli(flags) do { save_flags(flags); cli(); } while(0) 
 #define	__save_and_sti(flags) do { save_flags(flags); sti(); } while(0) 
 
-#define iret() __asm__ __volatile__ ("rte": : :"memory", "sp", "cc")
-
 /* For spinlocks etc */
 #define local_irq_save(x)	__save_and_cli(x)
 #define local_irq_set(x)	__save_and_sti(x)
 #define local_irq_restore(x)	__restore_flags(x)
 #define local_irq_disable()	__cli()
 #define local_irq_enable()	__sti()
+#endif // RT_H
+
+#define iret() __asm__ __volatile__ ("rte": : :"memory", "sp", "cc")
 
 #define cli()			__cli()
 #define sti()			__sti()

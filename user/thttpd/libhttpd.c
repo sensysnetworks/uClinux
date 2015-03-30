@@ -2357,6 +2357,7 @@ make_argp( httpd_conn* hc )
 ** directly is that we have already read part of the data into our
 ** buffer.
 */
+
 static void
 cgi_interpose( httpd_conn* hc, int wfd )
     {
@@ -2369,6 +2370,30 @@ cgi_interpose( httpd_conn* hc, int wfd )
 	if ( write( wfd, &(hc->read_buf[hc->checked_idx]), c ) < 0 )
 	    exit( -1 );
 	}
+#ifdef EMBED
+//  if ( c < hc->contentlength )
+	{
+	char *argv[4], arg2[32];
+	extern char *argv0;
+
+	(void) dup2(hc->conn_fd, STDIN_FILENO);
+	(void) dup2(wfd, STDOUT_FILENO);
+	(void) dup2(hc->conn_fd, STDERR_FILENO);
+	(void) close(wfd);
+	(void) fcntl( STDIN_FILENO, F_SETFL, 2L );
+	(void) fcntl( STDERR_FILENO, F_SETFL, 2L );
+	argv[0] = argv0;
+	argv[1] = "-interposer";
+	sprintf(arg2, "%d", hc->contentlength-c);
+	argv[2] = arg2;
+	argv[3] = NULL;
+	(void) signal( SIGPIPE, SIG_DFL );
+	(void) execve(argv0, argv, NULL);
+	syslog( LOG_ERR, "execve %s - %m", argv[0] );
+	httpd_send_err( hc, 500, err500title, err500form, hc->encodedurl );
+	_exit(1);
+	}
+#else
     while ( c < hc->contentlength )
 	{
 	r = read( hc->conn_fd, buf, MIN( sizeof(buf), hc->contentlength - c ) );
@@ -2379,15 +2404,18 @@ cgi_interpose( httpd_conn* hc, int wfd )
 	    if ( errno == EAGAIN )
 		sleep( 1 );
 	    else
+		{
 		exit( -1 );
+		}
 	    }
 	else
 	    {
-	    if ( write( wfd, buf, r ) < 0 )
+	    if (write( wfd, buf, r ) < 0 ) 
 		exit( -1 );
 	    c += r;
 	    }
 	}
+#endif
     exit( 0 );
     }
 
@@ -2396,7 +2424,7 @@ cgi_interpose( httpd_conn* hc, int wfd )
 static void
 cgi_child( httpd_conn* hc )
     {
-    int r;
+    int r = 0;
     char** argp;
     char** envp;
     char http_head[] = "HTTP/1.0 200 OK\n";
@@ -2407,7 +2435,8 @@ cgi_child( httpd_conn* hc )
     ** interposer process, depending on if we've read some of the data
     ** into our buffer.
     */
-    if ( hc->method == METHOD_POST && hc->read_idx > hc->checked_idx )
+//    if ( hc->method == METHOD_POST && hc->read_idx > hc->checked_idx )
+    if(1)
 	{
 	int p[2];
 
@@ -2435,7 +2464,11 @@ cgi_child( httpd_conn* hc )
 	    cgi_interpose( hc, p[1] );
 	    }
 	(void) close( p[1] );
-	(void) dup2( p[0], STDIN_FILENO );
+	if(p[0] != STDIN_FILENO) 
+	    {
+	    (void) dup2( p[0], STDIN_FILENO );
+	    (void) close( p[0] );
+	    }
 	}
     else
 	{
@@ -2451,13 +2484,15 @@ cgi_child( httpd_conn* hc )
     ** ifdeffed for Linux only.
     */
     (void) fcntl( hc->conn_fd, F_SETFD, 0 );
+    (void) fcntl( STDIN_FILENO, F_SETFL, 0L );	// BUG FIX - CLEAR O_NONBLOCK
 
     /* The response socket always becomes stdout and stderr. */
     (void) dup2( hc->conn_fd, STDOUT_FILENO );
     (void) dup2( hc->conn_fd, STDERR_FILENO );
+    (void) fcntl( STDOUT_FILENO, F_SETFL, 2L );	// BUG FIX - CLEAR O_NONBLOCK
+    (void) fcntl( STDERR_FILENO, F_SETFL, 2L );	// BUG FIX - CLEAR O_NONBLOCK
 
-    /* Close the syslog descriptor so that the CGI program can't
-    ** mess with it.  All other open descriptors should be either
+    /*
     ** the listen socket, sockets from accept(), or the file-logging
     ** fd, and all of those are set to close-on-exec, so we don't
     ** have to close anything else.

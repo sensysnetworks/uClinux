@@ -86,7 +86,7 @@ localhost (void)
     }
 
   /* Determine FQDN */
-  {
+  if (0) {
     struct hostent *hp = gethostbyname(buf);
 
     if (hp)

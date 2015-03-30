@@ -116,6 +116,9 @@ endif
 ifdef CONFIG_BOARD_UC5272
 BOARD := uC5272
 endif
+ifdef CONFIG_BOARD_MOD5272
+BOARD := MOD5272
+endif
 ifdef CONFIG_CANCam
 BOARD := CANCam
 endif

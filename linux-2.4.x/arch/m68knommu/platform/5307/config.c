@@ -55,10 +55,15 @@ unsigned int dma_device_address[MAX_DMA_CHANNELS];
 void coldfire_tick(void)
 {
 	volatile unsigned char	*timerp;
+	volatile unsigned short	*timerp2;
 
 	/* Reset the ColdFire timer */
 	timerp = (volatile unsigned char *) (MCF_MBAR + MCFTIMER_BASE1);
 	timerp[MCFTIMER_TER] = MCFTIMER_TER_CAP | MCFTIMER_TER_REF;
+
+        /* keep rdtsc up to date */
+	timerp2 = (volatile unsigned short *) (MCF_MBAR + MCFTIMER_BASE1);
+        timerp2[MCFTIMER_TRR] = rdtsc() + (CLOCK_TICK_RATE / HZ);
 }
 
 /***************************************************************************/
@@ -412,7 +417,12 @@ void config_BSP(char *commandp, int size)
     defined(CONFIG_DISKtel) || defined(CONFIG_SECUREEDGEMP3) || \
 	 defined(CONFIG_HW_CLEOPATRA)
 	/* Copy command line from FLASH to local buffer... */
+#if 1
+	const char *bootopt = "CONSOLE=/dev/ttyS0,115200";
+	memcpy(commandp, bootopt, size);
+#else
 	memcpy(commandp, (char *) 0xf0004000, size);
+#endif
 	commandp[size-1] = 0;
 #else
 	memset(commandp, 0, size);

@@ -62,3 +62,6 @@ bootstrap:
 archmrproper:
 
 archdep:
+
+image:
+	@$(MAKEBOOT) image

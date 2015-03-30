@@ -141,7 +141,7 @@ extern unsigned char fec_hwaddr[6];
 #define ICR_PHY_MASK_IPL	0x77777777
 #  if defined(CONFIG_UC5272_PHY_INT)
  #define ICR_PHY_MASK	0xFF0FFFFF
- #define ICR_PHY_SETUP	0x00d00000
+ #define ICR_PHY_SETUP	0x00c00000
  #define ICR_MASK_IP	0x00800000
 #  else /* CONFIG_UC5272_PHY_INT */
  #undef  M5272_PHY_STAT_INT
@@ -164,7 +164,7 @@ extern unsigned char fec_hwaddr[6];
   #define ICR_PHY_MASK_IPL	0x77777777
   #define ICR_PHY_MASK	0x70777777
   #define ICR_MASK_IP	0x08000000
-  #define ICR_PHY_SETUP	0x0d000000
+  #define ICR_PHY_SETUP	0x0c000000
 #  endif /* CONFIG_FEC_KS8995M */
 # endif /* CONFIG_BOARD_UC5272 */
 #endif /* CONFIG_M5272 */
@@ -393,7 +393,7 @@ static int	mii_queue(struct net_device *dev, int request,
 static int
 fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 	volatile fec_t	*fecp;
 	volatile cbd_t	*bdp;
 
@@ -498,7 +498,7 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 static void
 fec_timeout(struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 
 	printk("%s: transmit timed out.\n", dev->name);
 	fep->stats.tx_errors++;
@@ -584,7 +584,7 @@ fec_enet_interrupt(int irq, void * dev_id, struct pt_regs * regs)
 static void
 fec_enet_tx(struct net_device *dev)
 {
-	struct	fec_enet_private *fep;
+	volatile struct	fec_enet_private *fep;
 	volatile cbd_t	*bdp;
 	struct	sk_buff	*skb;
 
@@ -660,7 +660,7 @@ fec_enet_tx(struct net_device *dev)
 static void
 fec_enet_rx(struct net_device *dev)
 {
-	struct	fec_enet_private *fep;
+	volatile struct	fec_enet_private *fep;
 	volatile fec_t	*fecp;
 	volatile cbd_t *bdp;
 	struct	sk_buff	*skb;
@@ -970,7 +970,7 @@ static void MII_bit_bang_write(uint regval)
 static void
 fec_enet_mii(struct net_device *dev)
 {
-	struct	fec_enet_private *fep;
+	volatile struct	fec_enet_private *fep;
 	volatile fec_t *ep;
 	mii_list_t *mip;
 	uint mii_reg;
@@ -1011,7 +1011,7 @@ mii_queue(
 	int regval,
 	void (*func)(uint, struct net_device *))
 {
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 	unsigned long flags;
 	mii_list_t *mip;
 	int retval;
@@ -1066,7 +1066,7 @@ static void mii_do_cmd(struct net_device *dev, const phy_cmd_t *c)
 
 static void mii_parse_sr(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_STAT_LINK | PHY_STAT_FAULT | PHY_STAT_ANC);
@@ -1081,7 +1081,7 @@ static void mii_parse_sr(uint mii_reg, struct net_device *dev)
 
 static void mii_parse_cr(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_CONF_ANE | PHY_CONF_LOOP);
@@ -1094,7 +1094,7 @@ static void mii_parse_cr(uint mii_reg, struct net_device *dev)
 
 static void mii_parse_anar(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_CONF_SPMASK);
@@ -1129,7 +1129,7 @@ static void mii_disp_reg(uint mii_reg, struct net_device *dev)
 
 static void mii_parse_lxt970_csr(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_STAT_SPMASK);
@@ -1202,7 +1202,7 @@ static phy_info_t phy_info_lxt970 = {
 
 static void mii_parse_lxt971_sr2(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_STAT_SPMASK | PHY_STAT_LINK | PHY_STAT_ANC);
@@ -1291,7 +1291,7 @@ static phy_info_t phy_info_lxt971 = {
 
 static void mii_parse_lxt972_sr2(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_STAT_SPMASK | PHY_STAT_LINK | PHY_STAT_ANC);
@@ -1366,7 +1366,7 @@ static phy_info_t phy_info_lxt972 = {
 
 static void mii_parse_dp83847_sr2(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_STAT_SPMASK | PHY_STAT_LINK | PHY_STAT_ANC);
@@ -1439,7 +1439,7 @@ static phy_info_t phy_info_dp83847= {
 
 static void mii_parse_qs6612_pcr(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_STAT_SPMASK);
@@ -1515,7 +1515,7 @@ static phy_info_t phy_info_qs6612 = {
 
 static void mii_parse_am79c874_dr(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	*s &= ~(PHY_STAT_SPMASK | PHY_STAT_ANC);
@@ -1661,7 +1661,7 @@ static phy_info_t *phy_info[] = {
 
 static void mii_display_status(struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
 	if (!fep->link && !fep->old_link) {
@@ -1697,38 +1697,40 @@ static void mii_display_status(struct net_device *dev)
 
 static void mii_display_config(struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	char msgbuf[256];
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile uint *s = &(fep->phy_status);
 
-	printk("%s: config: auto-negotiation ", dev->name);
+	sprintf(msgbuf, "%s: config: auto-negotiation ", dev->name);
 
 	if (*s & PHY_CONF_ANE)
-		printk("on");
+		strcat(msgbuf, "on");
 	else
-		printk("off");
+		strcat(msgbuf, "off");
 
 	if (*s & PHY_CONF_100FDX)
-		printk(", 100FDX");
+		strcat(msgbuf, ", 100FDX");
 	if (*s & PHY_CONF_100HDX)
-		printk(", 100HDX");
+		strcat(msgbuf, ", 100HDX");
 	if (*s & PHY_CONF_10FDX)
-		printk(", 10FDX");
+		strcat(msgbuf, ", 10FDX");
 	if (*s & PHY_CONF_10HDX)
-		printk(", 10HDX");
+		strcat(msgbuf, ", 10HDX");
 	if (!(*s & PHY_CONF_SPMASK))
-		printk(", No speed/duplex selected?");
+		strcat(msgbuf, ", No speed/duplex selected?");
 
 	if (*s & PHY_CONF_LOOP)
-		printk(", loopback enabled");
+		strcat(msgbuf, ", loopback enabled");
 	
-	printk(".\n");
+	strcat(msgbuf, ".\n");
+	printk(KERN_DEBUG "%s", msgbuf);
 
 	fep->sequence_done = 1;
 }
 
 static void mii_relink(struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	int duplex;
 
 	fep->link = (fep->phy_status & PHY_STAT_LINK) ? 1 : 0;
@@ -1750,7 +1752,7 @@ static void mii_relink(struct net_device *dev)
 
 static void mii_queue_relink(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 
 	fep->phy_task.routine = (void *)mii_relink;
 	fep->phy_task.data = dev;
@@ -1759,7 +1761,7 @@ static void mii_queue_relink(uint mii_reg, struct net_device *dev)
 
 static void mii_queue_config(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 
 	fep->phy_task.routine = (void *)mii_display_config;
 	fep->phy_task.data = dev;
@@ -1784,7 +1786,7 @@ mii_link_interrupt(int irq, void * dev_id, struct pt_regs * regs)
 #endif
 {
 	struct	net_device *dev = dev_id;
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 
 #if defined(M5272_PHY_STAT_INT)
 	{
@@ -1809,7 +1811,7 @@ mii_link_interrupt(int irq, void * dev_id, struct pt_regs * regs)
 static void
 mii_discover_phy3(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 	int	i;
 
 	fep = dev->priv;
@@ -1856,7 +1858,7 @@ mii_discover_phy3(uint mii_reg, struct net_device *dev)
 static void
 mii_discover_phy(uint mii_reg, struct net_device *dev)
 {
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 	volatile fec_t *fecp;
 	uint phytype;
 
@@ -1892,7 +1894,7 @@ mii_discover_phy(uint mii_reg, struct net_device *dev)
 static int
 fec_enet_open(struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+    volatile struct fec_enet_private *fep = dev->priv;
 
 	/* I should reset the ring buffers here, but it's done in
 	 * the close routine because init already set them up
@@ -1902,12 +1904,23 @@ fec_enet_open(struct net_device *dev)
 	fep->link = 0;
 
 	if (fep->phy) {
+	    int timeout;
+
 		mii_do_cmd(dev, fep->phy->ack_int);
 		mii_do_cmd(dev, fep->phy->config);
 		mii_do_cmd(dev, phy_cmd_config);  /* display configuration */
 
-		while(!fep->sequence_done)
+		for (timeout = 0; timeout < 8000; timeout++) {
+		    if (!fep->sequence_done) {
 			schedule();
+		    }
+		}
+		if (!fep->sequence_done) {
+		    fec_enet_close(dev);
+		    printk("%s: configuration failure (%d)\n",
+			   dev->name, fep->sequence_done);
+		    return -EBUSY;
+		}
 
 		mii_do_cmd(dev, fep->phy->startup);
 #if defined( CONFIG_FEC_KS8995M_P5)
@@ -1937,7 +1950,7 @@ fec_enet_close(struct net_device *dev)
     int i;
 	volatile cbd_t *bdp;
 	volatile fec_t *fecp = fec_hwp;
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 
 	/* open/close now works - but see notes below
 	 */
@@ -2022,7 +2035,7 @@ fec_enet_close(struct net_device *dev)
 
 static struct net_device_stats *fec_enet_get_stats(struct net_device *dev)
 {
-	struct fec_enet_private *fep = (struct fec_enet_private *)dev->priv;
+	volatile struct fec_enet_private *fep = (struct fec_enet_private *)dev->priv;
 
 	return &fep->stats;
 }
@@ -2042,7 +2055,7 @@ static struct net_device_stats *fec_enet_get_stats(struct net_device *dev)
 
 static void set_multicast_list(struct net_device *dev)
 {
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 	volatile fec_t *ep;
 	struct dev_mc_list *dmi;
 	unsigned int i, j, bit, data, crc;
@@ -2142,7 +2155,7 @@ fec_set_mac_address(struct net_device *dev, void *p)
  */
 int __init fec_enet_init(struct net_device *dev)
 {
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 	int		i, j;
 	unsigned long	mem_addr;
 	volatile cbd_t	*bdp;
@@ -2232,7 +2245,7 @@ int __init fec_enet_init(struct net_device *dev)
 	if (iap[0] == 0xff && iap[1] == 0xff && iap[2] == 0xff &&
 	    iap[3] == 0xff && iap[4] == 0xff && iap[5] == 0xff)
 		iap = eap;
-#elif defined(CONFIG_BOARD_UC5272)
+#elif defined(CONFIG_BOARD_UC5272) && 0
 	memcpy(&tmpaddr, &fec_hwaddr, 6);
 	iap = &tmpaddr[0];
 #else
@@ -2365,7 +2378,7 @@ int __init fec_enet_init(struct net_device *dev)
 		volatile unsigned long  *icrp;
 
 		icrp = (volatile unsigned long *) (MCF_MBAR + MCFSIM_ICR3);
-		*icrp = 0x00000ddd;
+ 		*icrp = 0x00000ccc;
 	}
 #elif (defined(CONFIG_M5282) || defined(CONFIG_M5280))
 	/* Setup interrupt handlers. */
@@ -2526,7 +2539,7 @@ int __init fec_enet_init(struct net_device *dev)
 static void
 fec_restart(struct net_device *dev, int duplex)
 {
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 	volatile cbd_t *bdp;
 	volatile fec_t *fecp;
 	int i;
@@ -2601,7 +2614,7 @@ static void
 fec_stop(struct net_device *dev)
 {
 	volatile fec_t *fecp;
-	struct fec_enet_private *fep;
+	volatile struct fec_enet_private *fep;
 
 	fecp = fec_hwp;
 	fep = dev->priv;
@@ -2675,7 +2688,7 @@ static void	fec_enet_setup_hw_p1( struct net_device *dev )
 static void 
 fec_enet_setup_hw_p2( struct net_device *dev)
 {
-	struct fec_enet_private *fep = dev->priv;
+	volatile struct fec_enet_private *fep = dev->priv;
 	volatile fec_t *fecp = fec_hwp;
 
 	/* Enable MII mode.

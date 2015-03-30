@@ -1750,10 +1750,10 @@ static void mcfrs_irqinit(struct mcf_serial *info)
 
 	switch (info->line) {
 	case 0:
-		*icrp = 0xe0000000;
+		*icrp = 0xa0000000;
 		break;
 	case 1:
-		*icrp = 0x0e000000;
+		*icrp = 0x0b000000;
 		break;
 	default:
 		printk("SERIAL: don't know how to handle UART %d interrupt?\n",
@@ -1798,13 +1798,13 @@ static void mcfrs_irqinit(struct mcf_serial *info)
 	switch (info->line) {
 	case 0:
 		icrp = (volatile unsigned char *) (MCF_MBAR + MCFSIM_UART1ICR);
-		*icrp = /*MCFSIM_ICR_AUTOVEC |*/ MCFSIM_ICR_LEVEL6 |
+		*icrp = /*MCFSIM_ICR_AUTOVEC |*/ MCFSIM_ICR_LEVEL1 |
 			MCFSIM_ICR_PRI1;
 		mcf_setimr(mcf_getimr() & ~MCFSIM_IMR_UART1);
 		break;
 	case 1:
 		icrp = (volatile unsigned char *) (MCF_MBAR + MCFSIM_UART2ICR);
-		*icrp = /*MCFSIM_ICR_AUTOVEC |*/ MCFSIM_ICR_LEVEL6 |
+		*icrp = /*MCFSIM_ICR_AUTOVEC |*/ MCFSIM_ICR_LEVEL1 |
 			MCFSIM_ICR_PRI2;
 		mcf_setimr(mcf_getimr() & ~MCFSIM_IMR_UART2);
 		break;

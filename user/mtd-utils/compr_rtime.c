@@ -7,7 +7,7 @@
  *
  * For licensing information, see the file 'LICENCE' in this directory.
  *
- * $Id: compr_rtime.c,v 1.10 2003/05/11 10:47:13 dwmw2 Exp $
+ * $Id: compr_rtime.c,v 1.1 2004/12/10 03:29:59 hui Exp $
  *
  *
  * Very simple lz77-ish encoder.
@@ -24,7 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/errno.h>
-#include <linux/string.h> 
+#include <string.h> 
 
 /* _compress returns the compressed size, -1 if bigger */
 int jffs2_rtime_compress(unsigned char *data_in, unsigned char *cpage_out, 

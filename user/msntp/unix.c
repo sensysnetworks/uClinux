@@ -66,7 +66,13 @@ point in clearing the lock under Unix, but do so anyway. */
                 fprintf(file,"%ld\n",(long)getpid()) <= 0 ||
                 ferror(file) || fclose(file) != 0)
             fatal(1,"unable to write PID to %s",lockname);
+	/*
+	 hui: commented out. not sure what this is for? why adjust 0
+	      time. I think it's trying to determine if there is any
+	      system errors when adjusting time.
+
         adjust_time(0.0,1,0.0);
+	 */
     } else {
         errno = 0;
         if (remove(lockname) != 0)

@@ -4,8 +4,8 @@
  * This file contains the m68k architecture specific module code.
  */
 
-#define module_map(x)		vmalloc(x)
-#define module_unmap(x)		vfree(x)
+#define module_map(x)		kmalloc(x,GFP_KERNEL)
+#define module_unmap(x)		kfree(x)
 #define module_arch_init(x)	(0)
 #define arch_init_modules(x)	do { } while (0)
 

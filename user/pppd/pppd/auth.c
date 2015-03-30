@@ -581,6 +581,8 @@ auth_withpeer_fail(unit, protocol)
      * He'll probably take the link down, and there's not much
      * we can do except wait for that.
      */
+    lcp_close(unit, "Failed to authenticate ourselves to peer");
+    status = EXIT_AUTH_TOPEER_FAILED;
 }
 
 /*
